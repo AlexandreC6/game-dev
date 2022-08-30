@@ -18,15 +18,52 @@ const onChatSubmitted = (e) => {
   sock.emit('message', text);
 }
 
-const getBoard = (canvas) => {
+const getBoard = (canvas, numCells = 20) => {
   const contexte = canvas.getContext('2d');
+  const cellSize = Math.floor(canvas.width/numCells);
 
-  const fillRect = (x, y, color) => {
+  const fillCell = (x, y, color) => {
     contexte.fillStyle = color;
-    contexte.fillRect(x -10, y - 10, 20, 20)
+    contexte.fillRect(x*cellSize, y *cellSize, cellSize, cellSize)
   }
 
-  return { fillRect };
+  // Grille canvas
+  const drawGrid = () => {
+
+    contexte.strokeStyle = '#333';
+    contexte.beginPath();
+
+    for (let i = 0; i < numCells + 1; i++) {
+      // Vertical lines
+      contexte.moveTo(i * cellSize, 0)
+      contexte.lineTo(i* cellSize, cellSize*numCells);
+
+      // Horizontal lines
+      contexte.moveTo(0, i * cellSize)
+      contexte.lineTo(cellSize*numCells, i* cellSize);
+
+    }
+    // Create the border of line
+    contexte.stroke();
+  }
+
+  const clear = () => {
+    contexte.clearRect(0, 0, canvas.width, canvas.height);
+  };
+
+  const reset = () => {
+    clear();
+    drawGrid();
+  }
+
+  const getCellCoordinates = (x, y) => {
+    return {
+      x: Math.floor(x/cellSize),
+      y: Math.floor(y/cellSize)
+    }
+  }
+
+  return { fillCell, reset, getCellCoordinates };
 }
 
 // The coordinate of the click within the canvas
@@ -43,17 +80,19 @@ const getClickCoordinates = (element, event) => {
 
 (() => {
   const canvas = document.getElementById('canvas');
-  const {fillRect} = getBoard(canvas);
+  const {fillCell, reset, getCellCoordinates} = getBoard(canvas);
   const sock = io();
 
   const onClick = (e) => {
     const {x, y} = getClickCoordinates(canvas, e);
     // Render the rectangle
-    sock.emit('turn', {x , y});
+    sock.emit('turn', getCellCoordinates(x, y));
   }
 
+  reset();
+
   sock.on('message',log);
-  sock.on('turn', ({x, y}) => fillRect(x, y))
+  sock.on('turn', ({x, y, color}) => fillCell(x, y, color))
 
 
   document
